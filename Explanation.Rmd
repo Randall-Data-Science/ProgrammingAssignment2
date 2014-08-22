@@ -1,0 +1,123 @@
+## JHU: R Programming
+### Programming Assignment 2
+
+This programming assignment investigates lexical scoping and environments in R, particularly when 
+used in the context of caching output from costly operations on data.
+
+The assignment begins with a special vector class definition:
+
+```{r}
+makeVector <- function(x = numeric()) {
+    m <- NULL
+    set <- function(y) {
+        x <<- y
+        m <<- NULL
+    }
+    get <- function() x
+    setmean <- function(mean) m <<- mean
+    getmean <- function() m
+    list(set = set, get = get,
+         setmean = setmean,
+         getmean = getmean)
+}
+```
+
+Using a list, a vector of numeric atoms passed to the `makeVector` function creates a list to wrap the original vector as well as a container for storing the mean of the vector's values. 
+
+Note the use of `<<-` for assignment. With lexical scoping symbols are resolved from the environment where the fuction was defined. The parent environment is where the function was *called* rather than where it was *defined*. The `<<-` specifically asks the function to look in the parent environment rather than the environment where the function was defined.
+
+As an example of this vector:
+
+```{r}
+aVector <- makeVector(c(1, 2, 3, 4, 5))
+```
+
+The line `get <- function() x` means that calling <vector>$get() will simply return the vector unaltered. The vector is accessed like a part of a list
+
+```{r}
+aVector$get()
+```
+
+### Caching the Mean
+
+An example of how to cache an operation in provided with
+
+```{r}
+cachemean <- function(x, ...) {
+        m <- x$getmean()
+        if(!is.null(m)) {
+                message("getting cached data")
+                return(m)
+        }
+        data <- x$get()
+        m <- mean(data, ...)
+        x$setmean(m)
+        m
+}
+```
+
+One of the elements of a makeVector list is `m` though it is initialized as NULL. This new function `cachemean`, returns the value of `m` *if it is set*. If `m` is not set (it is NULL), then `cachemean` retrieves the vector from the list, calculates the mean, puts the mean into `m`, and returns the mean. The next time `cachemean` is called on the makeVector list/object a value in `m` will be available. These subsequent calls will be much faster than the first one as shown by the calculation of the mean of a vector with 100 million elements.
+
+```{r}
+bVector <- makeVector(sample(x=20, size=100e6, replace = TRUE))
+system.time(cachemean(bVector))
+system.time(cachemean(bVector))
+```
+
+### Cachable Matrix
+####Creating matrices with containers for caching results of costly computations
+
+First we create the matrix container, a list, like the array container above.
+
+```{r}
+makeCacheMatrix <- function(x = numeric()) {
+    s <- NULL
+    set <- function(y) {
+        x <<- y
+        s <<- NULL
+    }
+    get <- function() x
+    setinv <- function(solve) s <<- solve
+    getinv <- function() s
+    list(set = set, get = get,
+         setinv = setinv,
+         getinv = getinv)
+}
+```
+
+Instantiating a makeCacheMatrix stores the passed matrix in the environment so that 
+it is returned with `<matrix>$get()`. This definition also includes a container `s` 
+for storing the inverse of the matrix.
+
+Next there is a function for retrieving the inverse, or if the inverse has not yet 
+been calculated and cannot be returned, it is calculated, stored, and then returned.
+
+```{r}
+cacheInverse <- function(x, ...) {
+        s <- x$getinv()
+        if(!is.null(s)) {
+                message("getting cached data")
+                return(s)
+        }
+        data <- x$get()
+        s <- solve(data, ...)
+        x$setinv(s)
+        s
+}
+```
+
+To try it out, we can create a cachable matrix that has 4 million elements.
+
+```{r}
+set.seed(20)
+aMatr <- makeCacheMatrix(matrix(
+    sample(x = 100, size = 2000^2, replace = TRUE), ncol = 2000))
+```
+
+And try then find its inverse:
+
+```{r}
+system.time(cacheInverse(aMatr))
+system.time(cacheInverse(aMatr))
+```
+
