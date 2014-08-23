@@ -42,3 +42,6 @@ cacheInverse <- function(x, ...) {
 ## For a longer explanation, as well as documented timings, see: 
 ## https://github.com/Randall-dSci/ProgrammingAssignment2/blob/master/Explanation.html
 ## found in this repository
+
+## Viewable here:
+### https://rawgit.com/Randall-dSci/ProgrammingAssignment2/master/Explanation.html
